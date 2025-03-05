@@ -1,4 +1,5 @@
 #在blender中批量导入模型
+#这个脚本在blender的script模块里面使用
 import bpy
 import os
 
