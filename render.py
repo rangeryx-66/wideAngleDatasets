@@ -116,7 +116,7 @@ def setup_rendering_weather(scene, scene_depth,weather):
         mist_settings = world.mist_settings
         mist_settings.use_mist = True
         mist_settings.start = 0
-        mist_settings.depth = scene_depth * 1.2  # 增加20%余量
+        mist_settings.depth = scene_depth * 1.2
         mist_settings.falloff = 'LINEAR'  # 使用线性衰减
 
 
@@ -153,18 +153,17 @@ def create_lighting(weather,location):
 
 
     elif weather == 'cloudy':
-        # 阴天设置
-        # 调低背景亮度
-        bg_node.inputs[1].default_value = 2.5  # 原 2.5 -> 1.0
-        # 调整背景颜色为更柔和的灰色
-        bg_node.inputs[0].default_value = (0.4, 0.5, 0.6, 1)  # 原 (0.7, 0.8, 0.9, 1) -> 柔和灰色
+
+        bg_node.inputs[1].default_value = 2.5
+
+        bg_node.inputs[0].default_value = (0.4, 0.5, 0.6, 1)
         
-        # 添加柔和的面积光源
+
         area = bpy.data.lights.new(name="CloudLight", type='AREA')
-        area.energy = 500  # 原 500 -> 300
+        area.energy = 500
         area.size = 20
-        # 调整灯光颜色为柔和的冷白色
-        area.color = (0.6, 0.65, 0.75)  # 原 (0.8, 0.85, 1.0) -> 更柔和的颜色
+
+        area.color = (0.6, 0.65, 0.75)
         area_obj = bpy.data.objects.new(name="CloudLight", object_data=area)
         bpy.context.collection.objects.link(area_obj)
         
@@ -219,8 +218,7 @@ def render_views(filepath, savepath,height):
     scene.render.pixel_aspect_x = 1.0
     scene.render.pixel_aspect_y = 1.0
 
-    # 主循环生成视角
-    
+
     centers=[]
     viewpoints=[]
     for i in range(-2,2,1):
@@ -244,7 +242,7 @@ def render_views(filepath, savepath,height):
                 "parent_view_id": -1,
             })
             satelite_id=len(viewpoints)-1
-            # 计算当前高空相机的视场范围
+
             sensor_width = 36  # mm
             focal_length = 35  # mm
             aspect_ratio = scene.render.resolution_y / scene.render.resolution_x
@@ -267,7 +265,7 @@ def render_views(filepath, savepath,height):
             for dx, dy in corners:
                 x = center.x + dx
                 y = center.y + dy
-                z = center.z + height  # 低空高度固定为100单位
+                z = center.z + height
 
                 # 计算相机旋转四元数
                 yaw = math.atan2(dy, dx)+math.pi/2 #注意这里的旋转的z的角度和数学上的旋转符号是相反的
