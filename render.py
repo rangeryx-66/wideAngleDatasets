@@ -361,28 +361,20 @@ def render_views(filepath, savepath,height):
         json.dump(camera_params, f, indent=4)
 
 if __name__ == '__main__':
-    # render_views(
-    #     filepath='/root/autodl-tmp/bigBuildingstore/城区城市街道楼群带道路线_爱给网_aigei_com/City.blend',
-    #     savepath='/root/autodl-tmp/wideAngleDatasets/sunny/',
-    #     weather='sunny'  # 可选：sunny, cloudy, rainy, foggy
-    # )
-    render_views(
-        filepath='/root/autodl-tmp/bigBuildingstore/paris.blend',
-        savepath='/root/autodl-tmp/wideAngleDatasets/pairs' ,
-        height=200
-    )
-    # render_views(
-    #     filepath='/root/autodl-tmp/bigBuildingstore/乡镇城乡结合部城区城市街道楼群_爱给网_aigei_com/乡镇.blend',
-    #     savepath='wideAngleDatasets/乡镇' ,
-    #     height=30
-    # )
-    # render_views(
-    #     filepath='/root/autodl-tmp/bigBuildingstore/城区城市街道楼群带道路线_爱给网_aigei_com/City.blend',
-    #     savepath='/root/autodl-tmp/wideAngleDatasets/foggy/',
-    #     weather='foggy'  # 可选：sunny, cloudy, rainy, foggy
-    # )
-    # render_views(
-    #     filepath='/root/autodl-tmp/bigBuildingstore/城区城市街道楼群带道路线_爱给网_aigei_com/City.blend',
-    #     savepath='/root/autodl-tmp/wideAngleDatasets/cloudy/',
-    #     weather='cloudy'  # 可选：sunny, cloudy, rainy, foggy
-    # )
+    if __name__ == '__main__':
+        parser = argparse.ArgumentParser(description='Render 3D model views with Blender')
+        parser.add_argument('--filepath', type=str, required=True,
+                            help='Path to input .blend file')
+        parser.add_argument('--savepath', type=str, required=True,
+                            help='Path to save rendered outputs')
+        parser.add_argument('--height', type=int, required=True,
+                            help='Drone camera height setting')
+        args = parser.parse_args()
+
+        # 调用渲染函数
+        render_views(
+            filepath=args.filepath,
+            savepath=args.savepath,
+            height=args.height
+        )
+#blender --background --python render.py -- --filepath /path/to/model.blend --savepath /output/path --height 200
