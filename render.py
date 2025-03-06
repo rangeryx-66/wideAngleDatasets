@@ -5,6 +5,8 @@ import json
 from mathutils import Matrix, Vector
 import mathutils
 import random
+import argparse
+
 def get_calibration_matrix_K_from_blender(camd):
     f_in_mm = camd.lens
     scene = bpy.context.scene
@@ -83,106 +85,63 @@ def setup_rendering(scene):
     scene.cycles.use_adaptive_sampling = True
     scene.cycles.adaptive_threshold = 0.01
 
-def setup_rendering_weather(scene, scene_depth,weather):
+
+def load_environment_map(hdr_path, strength=1.0):
+    world = bpy.context.scene.world
+    world.use_nodes = True
+    nodes = world.node_tree.nodes
+    links = world.node_tree.links
+
+    # 清空现有节点
+    nodes.clear()
+
+    # 创建环境纹理节点
+    env_texture = nodes.new('ShaderNodeTexEnvironment')
+    env_texture.image = bpy.data.images.load(hdr_path)
+
+    # 创建背景和输出节点
+    background = nodes.new('ShaderNodeBackground')
+    output = nodes.new('ShaderNodeOutputWorld')
+
+    # 连接节点
+    links.new(env_texture.outputs['Color'], background.inputs['Color'])
+    links.new(background.outputs['Background'], output.inputs['Surface'])
+
+    # 设置环境光强度
+    background.inputs['Strength'].default_value = strength
+
+
+# 修改setup_rendering_weather函数
+def setup_rendering_weather(scene, scene_depth, weather, hdr_path):
     world = scene.world
     if not world:
         world = bpy.data.worlds.new("World")
         scene.world = world
-    world.use_nodes = True
-    world.node_tree.nodes.clear()
-    
-    bg_node = world.node_tree.nodes.new('ShaderNodeBackground')
-    output_node = world.node_tree.nodes.new('ShaderNodeOutputWorld')
-    world.node_tree.links.new(bg_node.outputs[0], output_node.inputs[0])
 
+    # 加载环境贴图（统一使用传入的hdr_path）
+    load_environment_map(hdr_path, strength=1.0)
+
+    # 保留雾效设置
     mist_settings = world.mist_settings
     mist_settings.use_mist = True
     mist_settings.start = 0
 
-    # 根据天气设置雾效参数
+    # 根据天气调整雾效参数（保留原有逻辑）
     if weather == 'foggy':
         mist_settings.depth = scene_depth * 0.6
         mist_settings.falloff = 'QUADRATIC'
-        bg_node.inputs[0].default_value = (0.7, 0.7, 0.7, 1)  # 灰白色雾
     elif weather == 'rainy':
         mist_settings.depth = scene_depth * 2.0
         mist_settings.falloff = 'LINEAR'
-        bg_node.inputs[0].default_value = (0.5, 0.5, 0.6, 1)  # 冷色调雾
     elif weather == 'cloudy':
         mist_settings.depth = scene_depth * 1.5
         mist_settings.falloff = 'LINEAR'
-        bg_node.inputs[0].default_value = (0.8, 0.85, 0.9, 1)  # 淡蓝色雾
     else:  # sunny
-        mist_settings = world.mist_settings
-        mist_settings.use_mist = True
-        mist_settings.start = 0
         mist_settings.depth = scene_depth * 1.2
-        mist_settings.falloff = 'LINEAR'  # 使用线性衰减
+        mist_settings.falloff = 'LINEAR'
 
 
-def create_lighting(weather,location):
-    # 删除所有现有光源
-    for light in bpy.data.lights:
-        bpy.data.lights.remove(light)
-        
-    world = bpy.context.scene.world
-    bg_node = world.node_tree.nodes['Background']
-
-    if weather == 'sunny':
-        # 设置背景为明亮的蓝色天空
-        # 强日光设置
-        # sun = bpy.data.lights.new(name="Sun", type='SUN')
-        # sun.energy = 4.0
-        # sun.color = (1.0, 0.95, 0.9)
-        # sun_obj = bpy.data.objects.new(name="Sun", object_data=sun)
-        # bpy.context.collection.objects.link(sun_obj)
-        # sun_obj.rotation_euler = (math.radians(60), 0, math.radians(45))
-        bg_node.inputs[1].default_value = 3.0  # 环境光强度
-
-    elif weather == 'rainy':
-        bg_node.inputs[0].default_value = (0.5, 0.5, 0.55, 1)
-        bg_node.inputs[1].default_value = 3
-        area = bpy.data.lights.new(name="RainLight", type='AREA')
-        area.energy = 500
-        area.size = 30
-        area.color = (0.5, 0.55, 0.65) 
-        area_obj = bpy.data.objects.new(name="RainLight", object_data=area)
-        bpy.context.collection.objects.link(area_obj)
-        area_obj.location = (0, 0, 20)
-        area_obj.rotation_euler = (0, 0, 0)
-
-
-    elif weather == 'cloudy':
-
-        bg_node.inputs[1].default_value = 2.5
-
-        bg_node.inputs[0].default_value = (0.4, 0.5, 0.6, 1)
-        
-
-        area = bpy.data.lights.new(name="CloudLight", type='AREA')
-        area.energy = 500
-        area.size = 20
-
-        area.color = (0.6, 0.65, 0.75)
-        area_obj = bpy.data.objects.new(name="CloudLight", object_data=area)
-        bpy.context.collection.objects.link(area_obj)
-        
-        area_obj.location = (0, -10, 15)
-        area_obj.rotation_euler = (math.radians(45), 0, 0)  # 调整角度，避免太直射
-
-
-    elif weather == 'foggy':
-        # 雾天设置
-        bg_node.inputs[1].default_value = 1.2
-        bg_node.inputs[0].default_value = (0.6, 0.6, 0.6, 1)
-        sun = bpy.data.lights.new(name="FogSun", type='SUN')
-        sun.energy = 1.0
-        sun.color = (0.9, 0.9, 0.8)
-        sun_obj = bpy.data.objects.new(name="FogSun", object_data=sun)
-        bpy.context.collection.objects.link(sun_obj)
-        sun_obj.rotation_euler = (math.radians(30), 0, math.radians(45))
-
-def render_views(filepath, savepath,height):
+def render_views(filepath, savepath, height, hdr_path):
     bpy.ops.object.delete()
 
     with bpy.data.libraries.load(filepath, link=False) as (data_from, data_to):
@@ -228,8 +187,7 @@ def render_views(filepath, savepath,height):
 
     for h in range(500, 900, 200):
         for center in centers:
-        
-            # 添加高空卫星视角
+
             satelite_id=0
             location = (center.x, center.y, center.z + h)
             rotation = (0, 0, 0)
@@ -288,7 +246,7 @@ def render_views(filepath, savepath,height):
         # weather_idx=i
         weather=weathers[weather_idx]
         # weather_idx=0
-        setup_rendering_weather(scene,scene_depth,weather)
+        setup_rendering_weather(scene, scene_depth, weather, hdr_path)
         cam = bpy.data.cameras.new(f"Camera_{i}")
         cam.lens = 35
         cam.clip_start = 0.1
@@ -300,8 +258,6 @@ def render_views(filepath, savepath,height):
 
 
         bpy.context.collection.objects.link(cam_obj)
-
-        create_lighting(weather,center_place)
 
 
         scene.render.image_settings.file_format = 'PNG'
@@ -360,21 +316,25 @@ def render_views(filepath, savepath,height):
     with open(os.path.join(savepath, "camera_params.json"), "w") as f:
         json.dump(camera_params, f, indent=4)
 
-if __name__ == '__main__':
-    if __name__ == '__main__':
-        parser = argparse.ArgumentParser(description='Render 3D model views with Blender')
-        parser.add_argument('--filepath', type=str, required=True,
-                            help='Path to input .blend file')
-        parser.add_argument('--savepath', type=str, required=True,
-                            help='Path to save rendered outputs')
-        parser.add_argument('--height', type=int, required=True,
-                            help='Drone camera height setting')
-        args = parser.parse_args()
 
-        # 调用渲染函数
-        render_views(
-            filepath=args.filepath,
-            savepath=args.savepath,
-            height=args.height
-        )
-#blender --background --python render.py -- --filepath /path/to/model.blend --savepath /output/path --height 200
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Render 3D model views with Blender')
+    parser.add_argument('--filepath', type=str, required=True,
+                        help='Path to input .blend file')
+    parser.add_argument('--savepath', type=str, required=True,
+                        help='Path to save rendered outputs')
+    parser.add_argument('--height', type=int, required=True,
+                        help='Drone camera height setting')
+    parser.add_argument('--environment_map', type=str, required=True,
+                        help='Path to HDR environment map')
+
+    args = parser.parse_args()
+
+    # 修改函数调用
+    render_views(
+        filepath=args.filepath,
+        savepath=args.savepath,
+        height=args.height,
+        hdr_path=args.environment_map  # 新增参数
+    )
+# blender --background --python render.py -- --filepath model.blend --savepath ./output --height 200 --environment_map /path/to/env.hdr
